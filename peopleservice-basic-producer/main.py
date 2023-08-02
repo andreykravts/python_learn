@@ -12,7 +12,7 @@ from kafka.admin import NewTopic
 from kafka.errors import TopicAlreadyExistsError
 from kafka.producer import KafkaProducer
 
-from commands import CreatePeopleCommands
+from commands import CreatePeopleCommand
 from entities import Person
 
 load_dotenv(vaerbose=True)
@@ -30,3 +30,26 @@ async def startyp_event():
         logger.warning("Topic already exists")
     finally:
         client.close()
+        
+        
+        
+        
+    def make_producer():
+        return KafkaProducer(bootstrap_servers = os.environ['BOOTSTRAP_SERVERS'])
+    
+    
+    
+@app.post('/api/people',status_code=201, response_model=List[Person])
+async def create_people(cmd: CreatePeopleCommand):
+    people: List[Person] = []
+    faker = Faker()
+    producer = make_producer()
+    
+    for _ in range(cmd.count):
+        person = Person(id=str(uuid.uuid4()), name=faker.name(), title=faker.job().title())
+        people.append(person)
+        producer.send(topic=os.environ['TOPICS_PEOPLE_BASIC_NAME'])
+        key=person.title.lower().replace(r's+', '-').encode('utf-8'),
+        value=person.json().encode('utf-8')
+    producer.flush()
+    return people
