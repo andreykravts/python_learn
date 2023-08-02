@@ -15,6 +15,10 @@ from kafka.producer import KafkaProducer
 from commands import CreatePeopleCommand
 from entities import Person
 
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+
 load_dotenv(vaerbose=True)
 
 app = FastAPI()
@@ -38,11 +42,18 @@ async def startyp_event():
     #     return KafkaProducer(bootstrap_servers = os.environ['BOOTSTRAP_SERVERS'])
     def make_producer():
         producer = KafkaProducer(bootstrap_servers = os.environ['BOOTSTRAP_SERVERS'],
-                                 linger_ms=int(os.environ['']))
+                                 linger_ms=int(os.environ['TOPICS_PEOPLE_ADV_LINGER_MS']),
+                                 retries=int(os.environ['TOPIC_PEOPLE_ADV_RETRIES']),
+                                 max_in_flight_request_per_connection=int(os.environ['TOPIC_PEOPLE_ADV_INFLATE_REQS']),
+                                 acks=os.environ['TOPIC_PEOPLE_ADV_AKC'])
         return producer
     
-    
-    
+    class SuccsesHandler:
+        def __init__(self, person):
+            self.person=person
+        def __call__(self, rec_metadata):
+            logger.info(f"""Successfully produced person {self.person} to topic {rec_metadata.topic} and partition {rec_metadata.partition} at offset {rec_metadata.offset} """)
+            
 @app.post('/api/people',status_code=201, response_model=List[Person])
 async def create_people(cmd: CreatePeopleCommand):
     people: List[Person] = []
